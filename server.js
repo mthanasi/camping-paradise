@@ -1,29 +1,35 @@
 var express = require("express"),
   app = express(),
-  expressSanitizer = require("express-sanitizer"),
-  bodyParser = require("body-parser"),
   mongoose = require("mongoose"),
-  flash = require("connect-flash"),
   passport = require("passport"),
+  flash = require("connect-flash"),
+  bodyParser = require("body-parser"),
   LocalStrategy = require("passport-local"),
-  seedDB = require("./seeds"),
   methodOverride = require("method-override"),
-  port = 3000;
+  expressSanitizer = require("express-sanitizer");
 
-//hiding Password in an environment variable
-var { dbURL } = require("./config");
+var port = 3000 || process.env.PORT;
 
-//requring models
-var User = require("./models/user");
+// DB seeding
+// var seedDB = require("./config/seeds");
+// seedDB();
 
-//requring routes
-var commentRoutes = require("./routes/comments"),
-  campgroundRoutes = require("./routes/campgrounds"),
-  indexRoutes = require("./routes/index");
+// models
+var User = require("./models/user"),
+  Comment = require("./models/comment"),
+  Campground = require("./models/campground");
 
-//set up the connection
+// routes
+var indexRoutes = require("./routes/index"),
+  reviewRoutes = require("./routes/reviews"),
+  commentRoutes = require("./routes/comments"),
+  campgroundRoutes = require("./routes/campgrounds");
+
+// mongoose setup
+var { DB_URL, PASSPORT_SECRET } = require("./config/setup");
+
 mongoose
-  .connect(dbURL, {
+  .connect(DB_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     useCreateIndex: true,
@@ -35,7 +41,7 @@ mongoose
     console.log("ERROR: ", err.message);
   });
 
-// Added to fix a warning from mongoose side
+// mongoose warning fix
 mongoose.set("useFindAndModify", false);
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(expressSanitizer());
@@ -44,16 +50,12 @@ app.use(express.static(__dirname + "/public"));
 app.use(methodOverride("_method"));
 app.use(flash());
 
-// seed the DB
-// seedDB();
-
-// require moments
 app.locals.moment = require("moment");
 
-// PASSPORT CONFIGURATION
+// auth passport setup
 app.use(
   require("express-session")({
-    secret: "When the moon hits your eye like a big pizza pie...",
+    secret: PASSPORT_SECRET,
     resave: false,
     saveUninitialized: false,
   })
@@ -75,7 +77,8 @@ app.use(function (req, res, next) {
 app.use("/", indexRoutes);
 app.use("/campgrounds", campgroundRoutes);
 app.use("/campgrounds/:id/comments", commentRoutes);
+app.use("/campgrounds/:id/reviews", reviewRoutes);
 
-app.listen(process.env.PORT || port, () => {
+app.listen(port, () => {
   console.log("Camping Paradise server is up and running");
 });
